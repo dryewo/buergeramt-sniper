@@ -13,13 +13,19 @@
     (log/info "System started.")
     started-system))
 
+(defn collect-open-dates [{:keys [crawler] :as system}]
+  (log/spy
+    (some->> (crawler/load-root crawler)
+             (scraper/parse-root-page)
+             (:appointment-link)
+             (crawler/load-calendar-page)
+             (scraper/parse-calendar-page))))
+
 (defn run [system]
   (log/info "Running...")
   (log/spy system)
-  (log/spy
-    (some-> (crawler/load-root (:crawler system))
-            (scraper/parse-root)))
-  (log/info "OK"))
+  (collect-open-dates system)
+  (log/info "Done"))
 
 (defn -main
   [& args]
