@@ -1,7 +1,8 @@
 (ns buergeramt-sniper.core
   (:require [clojure.tools.logging :as log]
             [com.stuartsierra.component :as component]
-            [buergeramt-sniper.crawler :as crawler])
+            [buergeramt-sniper.crawler :as crawler]
+            [buergeramt-sniper.scraper :as scraper])
   (:gen-class))
 
 (defn init []
@@ -15,7 +16,9 @@
 (defn run [system]
   (log/info "Running...")
   (log/spy system)
-  (crawler/load-root (:crawler system))
+  (log/spy
+    (some-> (crawler/load-root (:crawler system))
+            (scraper/parse-root)))
   (log/info "OK"))
 
 (defn -main

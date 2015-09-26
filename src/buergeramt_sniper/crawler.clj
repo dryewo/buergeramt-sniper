@@ -4,9 +4,14 @@
 
 (defrecord Crawler [base-url])
 
-(defn load-root [crawler]
+(defn load-root
+  "Returns page body (as String) or nil"
+  [crawler]
   (log/spy crawler)
-  (let [{:keys [status headers body error] :as resp} @(http/get (:base-url crawler))]
+  (let [{:keys [status body error]} @(http/get (:base-url crawler))]
+    (log/spy [status error])
     (if error
-      (println "Failed, exception: " error)
-      (println "HTTP GET success: " status (count body) "bytes"))))
+      (log/error "Error:" error)
+      (if (not= 200 status)
+        (log/error "Status:" status)
+        body))))
