@@ -7,6 +7,7 @@
                  [http-kit "2.1.19"]
                  [com.stuartsierra/component "0.3.0"]
                  [enlive "1.1.6"]
+                 [clojurewerkz/urly "1.0.0"]
                  [org.clojure/tools.logging "0.3.1"]
                  [ch.qos.logback/logback-classic "1.1.3"]]
   :main ^:skip-aot buergeramt-sniper.core

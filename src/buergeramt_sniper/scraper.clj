@@ -3,7 +3,7 @@
             [net.cgrand.enlive-html :as html]
             [clojure.string :as str]))
 
-(defrecord RootPage [appointment-link])
+(defrecord RootPage [appointment-href])
 
 (defrecord CalendarPage [months])
 (defrecord Month [name])
@@ -17,7 +17,7 @@
                             (html/select [:div.zmstermin-multi :a.btn])
                             first
                             log/spy)]
-      (log/spy (->RootPage (get-in app-link [:attrs :href]))))))
+      (log/spy (map->RootPage {:appointment-href (-> app-link :attrs :href)})))))
 
 (defn- parse-closed-date
   "Parse date cell and return its text"
@@ -35,11 +35,15 @@
   "Parse month table and return Month map"
   [dom]
   (let [[month-name] (html/select dom [:th.month])
+        [prev-link] (html/select dom [:th.prev :a])
+        [next-link] (html/select dom [:th.next :a])
         open-dates (html/select dom [:td.buchbar])
         closed-dates (html/select dom [:td.nichtbuchbar])]
     (map->Month {:name         (some-> month-name html/text str/trim)
                  :closed-dates (seq (map parse-closed-date closed-dates))
-                 :open-dates   (seq (map parse-open-date open-dates))})))
+                 :open-dates   (seq (map parse-open-date open-dates))
+                 :prev-href    (some-> prev-link :attrs :href)
+                 :next-href    (some-> next-link :attrs :href)})))
 
 (defn parse-calendar-page
   "Parse html content and return CalendarPage map"
