@@ -10,7 +10,7 @@
 
 (defrecord CalendarPage [months])
 (defrecord Month [name closed-dates open-dates prev-href next-href])
-(defrecord Day [records])
+(defrecord Day [times])
 
 (defn parse-root-page
   "Parse dom tree and return RootPage map"

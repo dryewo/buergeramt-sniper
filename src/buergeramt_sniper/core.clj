@@ -56,9 +56,19 @@
                                          (scraper/parse-root-page)
                                          :appointment-href)]
     (when-let [first-calendar-page (get-calendar-page first-calendar-href)]
-      (let [[first-open-date] (extract-open-dates first-calendar-page)
-            daytimes-page (get-daytimes-page (:href first-open-date))]
-        (log/info (with-out-str (print-table [:time :place] (:times daytimes-page))))))))
+      (let [open-dates (take 2 (extract-open-dates first-calendar-page))
+            open-dates-w-times (for [od open-dates]
+                                          (let [daytimes-page (get-daytimes-page (:href od))
+                                                daytimes-w-dates (update-in daytimes-page
+                                                                            [:times]
+                                                                            (partial map #(assoc % :date (:name od))))]
+                                            (merge od daytimes-w-dates)))]
+        (log/info (with-out-str (print-table [:n :date :time :place]
+                                             (->> open-dates-w-times
+                                                  (map :times)
+                                                  flatten
+                                                  (take 20)
+                                                  (map #(assoc %2 :n %1) (iterate inc 1))))))))))
 
 (defn run [system]
   (log/info "Running...")
