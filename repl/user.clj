@@ -18,7 +18,7 @@
   "Starts the system running, sets the Var #'system."
   []
   (alter-var-root #'system
-                  (constantly (buergeramt-sniper.core/init))))
+                  (constantly (buergeramt-sniper.core/init-debug))))
 
 (defn stop
   "Stops the system if it is currently running, updates the Var

@@ -1,11 +1,28 @@
 (ns buergeramt-sniper.crawler
   (:require [clojure.tools.logging :as log]
-            [org.httpkit.client :as http]))
+            [org.httpkit.client :as http]
+            [net.cgrand.enlive-html :as html]
+            [clojurewerkz.urly.core :as urly]))
+
+;;;; Conventions
+;;;; load-*    String -> Enlive DOM
 
 (defrecord Crawler [base-url])
 
+(defn resolve-href
+  "Given a node, resolve its :href attr if it is relative, return transformed node"
+  [base-url node]
+  (update-in node [:attrs :href] #(try (urly/resolve base-url %)
+                                       (catch Exception _ nil))))
+
+(defn- parse-html
+  "Parse page body and resolve relative hrefs, return DOM"
+  [url body]
+  (-> (html/html-snippet body)
+      (html/at [:a] (partial resolve-href url))))
+
 (defn load-page
-  "Returns page body (as String) or nil"
+  "Load a page and parse it, return DOM or nil"
   [^String href]
   (log/debug "Loading" href)
   (let [{:keys [status body error]} @(http/get href)]
@@ -14,11 +31,10 @@
       (log/error "Error:" error)
       (if (not= 200 status)
         (log/error "Status:" status)
-        body))))
+        (parse-html href body)))))
 
 
 (defn load-root
-  "Returns root page body (as String) or nil"
   [^Crawler crawler]
   (log/info "Loading root page")
   (load-page (:base-url crawler)))

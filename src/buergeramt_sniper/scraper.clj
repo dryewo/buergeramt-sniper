@@ -3,33 +3,38 @@
             [net.cgrand.enlive-html :as html]
             [clojure.string :as str]))
 
+;;;; Conventions
+;;;; parse-*    Enlive DOM -> custom map or record
+
 (defrecord RootPage [appointment-href])
 
 (defrecord CalendarPage [months])
-(defrecord Month [name])
+(defrecord Month [name closed-dates open-dates prev-href next-href])
 
 (defn parse-root-page
-  "Parse html content and return RootPage map"
-  [body]
-  (log/info "Parsing root page," (count body) "bytes")
-  (when-let [dom (html/html-snippet body)]
-    (when-let [app-link (-> dom
-                            (html/select [:div.zmstermin-multi :a.btn])
-                            first
-                            log/spy)]
-      (log/spy (map->RootPage {:appointment-href (-> app-link :attrs :href)})))))
+  "Parse dom tree and return RootPage map"
+  [dom]
+  (log/info "Parsing root page")
+  (when-let [app-link (-> dom
+                          (html/select [:div.zmstermin-multi :a.btn])
+                          first
+                          log/spy)]
+    (log/spy (map->RootPage {:appointment-href (-> app-link :attrs :href)}))))
 
 (defn- parse-closed-date
   "Parse date cell and return its text"
   [dom]
-  (-> dom html/text str/trim)
-  #_{:text (-> dom html/text str/trim)})
+  {:text (-> dom html/text str/trim)})
 
 (defn- parse-open-date
   "Parse date cell and return its text and href"
   [dom]
   {:text (-> dom html/text str/trim)
-   :href (-> dom :attrs :href)})
+   :href (-> dom
+             (html/select [:a])
+             first
+             :attrs
+             :href)})
 
 (defn- parse-month
   "Parse month table and return Month map"
@@ -40,16 +45,15 @@
         open-dates (html/select dom [:td.buchbar])
         closed-dates (html/select dom [:td.nichtbuchbar])]
     (map->Month {:name         (some-> month-name html/text str/trim)
-                 :closed-dates (seq (map parse-closed-date closed-dates))
-                 :open-dates   (seq (map parse-open-date open-dates))
+                 :closed-dates (map parse-closed-date closed-dates)
+                 :open-dates   (map parse-open-date open-dates)
                  :prev-href    (some-> prev-link :attrs :href)
                  :next-href    (some-> next-link :attrs :href)})))
 
 (defn parse-calendar-page
   "Parse html content and return CalendarPage map"
-  [body]
-  (log/info "Parsing calendar page," (count body) "bytes")
-  (when-let [dom (html/html-snippet body)]
+  [dom]
+  (log/info "Parsing calendar page")
     (when-let [months (seq (html/select dom [:div.calendar-month-table]))]
       (log/spy (count months))
-      (map->CalendarPage {:months (map parse-month months)}))))
+      (map->CalendarPage {:months (map parse-month months)})))

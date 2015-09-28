@@ -13,7 +13,7 @@
   :main ^:skip-aot buergeramt-sniper.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}
-             :dev     {:repl-options {:init-ns user}
-                       :source-paths ["dev"]
+             :repl    {:repl-options {:init-ns user}
+                       :source-paths ["repl"]
                        :dependencies [[org.clojure/tools.namespace "0.2.10"]
                                       [org.clojure/java.classpath "0.2.2"]]}})
