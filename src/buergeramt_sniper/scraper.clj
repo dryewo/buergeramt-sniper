@@ -10,15 +10,13 @@
 
 (defrecord CalendarPage [months])
 (defrecord Month [name closed-dates open-dates prev-href next-href])
+(defrecord Day [records])
 
 (defn parse-root-page
   "Parse dom tree and return RootPage map"
   [dom]
   (log/info "Parsing root page")
-  (when-let [app-link (-> dom
-                          (html/select [:div.zmstermin-multi :a.btn])
-                          first
-                          log/spy)]
+  (when-let [app-link (-> dom (html/select [:div.zmstermin-multi :a.btn]) first)]
     (log/spy (map->RootPage {:appointment-href (-> app-link :attrs :href)}))))
 
 (defn- parse-closed-date
@@ -51,9 +49,35 @@
                  :next-href    (some-> next-link :attrs :href)})))
 
 (defn parse-calendar-page
-  "Parse html content and return CalendarPage map"
+  "Parse dom tree and return CalendarPage map"
   [dom]
   (log/info "Parsing calendar page")
-    (when-let [months (seq (html/select dom [:div.calendar-month-table]))]
-      (log/spy (count months))
-      (map->CalendarPage {:months (map parse-month months)})))
+  (when-let [months (-> dom (html/select [:div.calendar-month-table]) seq)]
+    (map->CalendarPage {:months (map parse-month months)})))
+
+(defn- parse-timetable-record [dom]
+  (let [[th] (html/select dom [:th])
+        [td-a] (html/select dom [:td :a])]
+    {:time  (some-> th html/text str/trim)
+     :place (some-> td-a html/text str/trim)
+     :href  (some-> td-a :attrs :href)}))
+
+(defn- fix-omitted-times
+  "If :time for record is empty, take it from the previous record"
+  [records]
+  (second
+    (reduce
+      (fn [[last-time acc] r]
+        (if (str/blank? (:time r))
+          [last-time (conj acc (assoc r :time last-time))]
+          [(:time r) (conj acc r)]))
+      ["" []]
+      records)))
+
+(defn parse-daytimes-page
+  [dom]
+  (log/info "Parsing daytimes page")
+  (when-let [timetable-records (some-> dom (html/select [:div.timetable :tr]) seq)]
+    (map->Day {:times (some->> timetable-records
+                               (map parse-timetable-record)
+                               (fix-omitted-times))})))
