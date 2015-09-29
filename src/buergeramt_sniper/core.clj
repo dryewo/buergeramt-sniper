@@ -51,6 +51,18 @@
           crawler/load-page
           scraper/parse-daytimes-page))
 
+(defn pretty-print [open-dates-w-times]
+  (let [open-dates-w-times-w-dates (for [od open-dates-w-times]
+                                     (update-in od
+                                                [:times]
+                                                (partial map #(assoc % :date (:name od)))))]
+    (log/info (with-out-str (print-table [:n :date :time :place]
+                                         (->> open-dates-w-times-w-dates
+                                              (map :times)
+                                              flatten
+                                              (take 20)
+                                              (map #(assoc %2 :n %1) (iterate inc 1))))))))
+
 (defn collect-open-dates [{:keys [crawler] :as system}]
   (when-let [first-calendar-href (some-> (crawler/load-root crawler)
                                          (scraper/parse-root-page)
@@ -58,17 +70,9 @@
     (when-let [first-calendar-page (get-calendar-page first-calendar-href)]
       (let [open-dates (take 2 (extract-open-dates first-calendar-page))
             open-dates-w-times (for [od open-dates]
-                                          (let [daytimes-page (get-daytimes-page (:href od))
-                                                daytimes-w-dates (update-in daytimes-page
-                                                                            [:times]
-                                                                            (partial map #(assoc % :date (:name od))))]
-                                            (merge od daytimes-w-dates)))]
-        (log/info (with-out-str (print-table [:n :date :time :place]
-                                             (->> open-dates-w-times
-                                                  (map :times)
-                                                  flatten
-                                                  (take 20)
-                                                  (map #(assoc %2 :n %1) (iterate inc 1))))))))))
+                                 (let [daytimes-page (get-daytimes-page (:href od))]
+                                   (merge od daytimes-page)))]
+        (pretty-print open-dates-w-times)))))
 
 (defn run [system]
   (log/info "Running...")
