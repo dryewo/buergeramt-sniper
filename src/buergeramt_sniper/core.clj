@@ -2,7 +2,7 @@
   (:require [clojure.tools.logging :as log]
             [com.stuartsierra.component :as component]
             [schema.core :as s]
-            [buergeramt-sniper.crawler2 :as crawler])
+            [buergeramt-sniper.crawler :as crawler])
   (:gen-class))
 
 (s/defrecord RunParams

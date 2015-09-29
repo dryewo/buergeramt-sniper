@@ -1,4 +1,4 @@
-(ns buergeramt-sniper.crawler2
+(ns buergeramt-sniper.crawler
   (:require [clojure.tools.logging :as log]
             [clojure.pprint :refer [print-table]]
             [schema.core :as s]
