@@ -16,8 +16,10 @@
   "Parse dom tree and return RootPage map"
   [dom]
   (log/info "Parsing root page")
-  (when-let [app-link (-> dom (html/select [:div.zmstermin-multi :a.btn]) first)]
-    (log/spy (map->RootPage {:appointment-href (-> app-link :attrs :href)}))))
+  (let [[appointment-a] (-> dom (html/select [:div.zmstermin-multi :a.btn]))
+        [title-h1] (-> dom (html/select [:div.article :div.header :h1.title]))]
+    (log/spy (map->RootPage {:appointment-href (-> appointment-a :attrs :href)
+                             :title            (-> title-h1 html/text str/trim)}))))
 
 (defn- parse-closed-date
   "Parse date cell and return its text"
