@@ -4,8 +4,7 @@
             [com.stuartsierra.component :as component]
             [buergeramt-sniper.crawler :as crawler]
             [buergeramt-sniper.scraper :as scraper])
-  (:gen-class)
-  (:import (buergeramt_sniper.scraper CalendarPage)))
+  (:gen-class))
 
 ;;;; Conventions
 ;;;; get-*        href -> map
@@ -31,7 +30,7 @@
           crawler/load-calendar-page
           scraper/parse-calendar-page))
 
-(defn extract-prev&next [^CalendarPage calendar-page]
+(defn extract-prev&next [calendar-page]
   (->> calendar-page
        :months
        (map (juxt :prev-href :next-href))
@@ -39,7 +38,7 @@
        (remove nil?)
        (into #{})))
 
-(defn extract-open-dates [^CalendarPage calendar-page]
+(defn extract-open-dates [calendar-page]
   (for [month (:months calendar-page)
         date (:open-dates month)]
     {:name (str (:text date) " " (:name month))
