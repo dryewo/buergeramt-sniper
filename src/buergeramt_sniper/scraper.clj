@@ -13,10 +13,6 @@
              :attrs   s/Any
              :content s/Any}))
 
-(s/defrecord RootPage
-  [appointment-href :- s/Str
-   title :- s/Str])
-
 (s/defrecord Time
   [time :- s/Str
    place :- s/Str
@@ -42,23 +38,24 @@
 (s/defrecord CalendarPage
   [months :- [Month]])
 
+(s/defrecord RootPage
+  [appointment-href :- s/Str
+   title :- s/Str])
+
 (s/defn ^:always-val1idate parse-root-page :- RootPage
-  "Parse dom tree and return RootPage map"
   [dom :- [Dom]]
-  (log/info "Parsing root page")
-  (let [[appointment-a] (-> dom (html/select [:div.zmstermin-multi :a.btn]))
-        [title-h1] (-> dom (html/select [:div.article :div.header :h1.title]))]
-    (log/spy (strict-map->RootPage {:appointment-href (-> appointment-a :attrs :href)
-                                    :title            (-> title-h1 html/text str/trim)}))))
+  (strict-map->RootPage
+    {:appointment-href (-> (html/select dom [:div.zmstermin-multi :a.btn])
+                           first :attrs :href)
+     :title            (-> (html/select dom [:div.article :div.header :h1.title])
+                           first html/text str/trim)}))
 
 (s/defn ^:always-validate parse-closed-date :- ClosedDate
-  "Parse date cell and return its text"
   [dom :- Dom]
   (strict-map->ClosedDate {:text (-> dom html/text str/trim)}))
 
 (s/defn ^:always-validate parse-open-date :- OpenDate
-  "Parse date cell and return its text and href"
-  [dom]
+  [dom :- Dom]
   (strict-map->OpenDate {:text (-> dom html/text str/trim)
                          :href (-> dom
                                    (html/select [:a])
@@ -67,23 +64,21 @@
                                    :href)}))
 
 (s/defn ^:always-validate parse-month :- Month
-  "Parse month table and return Month map"
   [dom :- Dom]
-  (let [[month-name] (html/select dom [:th.month])
-        [prev-link] (html/select dom [:th.prev :a])
-        [next-link] (html/select dom [:th.next :a])
-        open-dates (html/select dom [:td.buchbar])
-        closed-dates (html/select dom [:td.nichtbuchbar])]
-    (strict-map->Month {:name         (some-> month-name html/text str/trim)
-                        :closed-dates (map parse-closed-date closed-dates)
-                        :open-dates   (map parse-open-date open-dates)
-                        :prev-href    (some-> prev-link :attrs :href)
-                        :next-href    (some-> next-link :attrs :href)})))
+  (strict-map->Month {:name         (-> (html/select dom [:th.month])
+                                        first html/text str/trim)
+                      :prev-href    (-> (html/select dom [:th.prev :a])
+                                        first :attrs :href)
+                      :next-href    (-> (html/select dom [:th.next :a])
+                                        first :attrs :href)
+                      :closed-dates (->> (html/select dom [:td.nichtbuchbar])
+                                         (map parse-closed-date))
+                      :open-dates   (->> (html/select dom [:td.buchbar])
+                                         (map parse-open-date))}))
 
 (s/defn ^:always-validate parse-calendar-page :- CalendarPage
-  "Parse dom tree and return CalendarPage map"
   [dom :- [Dom]]
-  (log/info "Parsing calendar page")
+  (log/debug "Parsing calendar page")
   (when-let [months (-> dom (html/select [:div.calendar-month-table]) seq)]
     (strict-map->CalendarPage {:months (map parse-month months)})))
 
@@ -110,8 +105,7 @@
 
 (s/defn ^:always-validate parse-daytimes-page :- Day
   [dom :- [Dom]]
-  (log/info "Parsing daytimes page")
-  (when-let [timetable-records (some-> dom (html/select [:div.timetable :tr]) seq)]
-    (strict-map->Day {:times (some->> timetable-records
-                                      (map parse-timetable-record)
-                                      (fix-omitted-times))})))
+  (log/debug "Parsing daytimes page")
+  (strict-map->Day {:times (->> (html/select dom [:div.timetable :tr])
+                                (map parse-timetable-record)
+                                (fix-omitted-times))}))

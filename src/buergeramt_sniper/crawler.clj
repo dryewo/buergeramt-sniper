@@ -26,20 +26,9 @@
   [^String href]
   (log/debug "Loading" href)
   (let [{:keys [status body error]} @(http/get href)]
-    (log/spy [status error])
+    (log/trace [status error])
     (if error
       (log/error "Error:" error)
       (if (not= 200 status)
         (log/error "Status:" status)
         (parse-html href body)))))
-
-
-(defn load-root
-  [^Crawler crawler]
-  (log/info "Loading root page")
-  (load-page (:base-url crawler)))
-
-(defn load-calendar-page
-  [^String href]
-  (log/info "Loading calendar page")
-  (load-page href))

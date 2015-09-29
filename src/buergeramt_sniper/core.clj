@@ -19,15 +19,15 @@
     started-system))
 
 (defn init-debug []
-  (init "https://service.berlin.de/dienstleistung/121482/")
-  ;(init "https://service.berlin.de/dienstleistung/326423/")
+  ;(init "https://service.berlin.de/dienstleistung/121482/")
+  (init "https://service.berlin.de/dienstleistung/326423/")
   ;(init "https://service.berlin.de/dienstleistung/120686/")
   )
 
 (defn get-calendar-page [href]
   [href]
   (some-> href
-          crawler/load-calendar-page
+          crawler/load-page
           scraper/parse-calendar-page))
 
 (defn extract-prev&next [calendar-page]
@@ -63,7 +63,7 @@
                                               (map #(assoc %2 :n %1) (iterate inc 1))))))))
 
 (defn collect-open-dates [{:keys [crawler] :as system}]
-  (when-let [first-calendar-href (some-> (crawler/load-root crawler)
+  (when-let [first-calendar-href (some-> (crawler/load-page (:base-url crawler))
                                          (scraper/parse-root-page)
                                          :appointment-href)]
     (when-let [first-calendar-page (get-calendar-page first-calendar-href)]
