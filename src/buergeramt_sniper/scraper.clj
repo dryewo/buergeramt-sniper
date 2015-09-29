@@ -6,8 +6,12 @@
 
 (s/defschema Dom
   "Enlive DOM schema"
-  (s/either [s/Any]
-            s/Any))
+  (s/either s/Str
+            {:type s/Any
+             :data s/Any}
+            {:tag     s/Any
+             :attrs   s/Any
+             :content s/Any}))
 
 (s/defrecord RootPage
   [appointment-href :- s/Str
@@ -38,9 +42,9 @@
 (s/defrecord CalendarPage
   [months :- [Month]])
 
-(s/defn ^:always-validate parse-root-page :- RootPage
+(s/defn ^:always-val1idate parse-root-page :- RootPage
   "Parse dom tree and return RootPage map"
-  [dom :- Dom]
+  [dom :- [Dom]]
   (log/info "Parsing root page")
   (let [[appointment-a] (-> dom (html/select [:div.zmstermin-multi :a.btn]))
         [title-h1] (-> dom (html/select [:div.article :div.header :h1.title]))]
@@ -78,7 +82,7 @@
 
 (s/defn ^:always-validate parse-calendar-page :- CalendarPage
   "Parse dom tree and return CalendarPage map"
-  [dom :- Dom]
+  [dom :- [Dom]]
   (log/info "Parsing calendar page")
   (when-let [months (-> dom (html/select [:div.calendar-month-table]) seq)]
     (strict-map->CalendarPage {:months (map parse-month months)})))
@@ -105,7 +109,7 @@
     second))
 
 (s/defn ^:always-validate parse-daytimes-page :- Day
-  [dom :- Dom]
+  [dom :- [Dom]]
   (log/info "Parsing daytimes page")
   (when-let [timetable-records (some-> dom (html/select [:div.timetable :tr]) seq)]
     (strict-map->Day {:times (some->> timetable-records
