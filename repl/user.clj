@@ -7,7 +7,8 @@
             [clojure.repl :refer [apropos dir doc find-doc pst source]]
             [clojure.tools.namespace.repl :refer [refresh refresh-all]]
             [com.stuartsierra.component :as component]
-            [buergeramt-sniper.core]))
+            [buergeramt-sniper.core]
+            [schema.core :as s]))
 
 (def system
   "A Var containing an object representing the application under
@@ -31,7 +32,7 @@
   "Initializes and starts the system running."
   []
   (start)
-  (buergeramt-sniper.core/run system))
+  (s/with-fn-validation (buergeramt-sniper.core/run system)))
 
 (defn reset
   "Stops the system, reloads modified source files, and restarts it."
