@@ -9,6 +9,8 @@
                  [enlive "1.1.6"]
                  [clojurewerkz/urly "1.0.0"]
                  [prismatic/schema "1.0.1"]
+                 [jarohen/chime "0.1.6"]
+                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [org.clojure/tools.logging "0.3.1"]
                  [ch.qos.logback/logback-classic "1.1.3"]]
   :main ^:skip-aot buergeramt-sniper.core

@@ -70,8 +70,10 @@
     (with-out-str
       (println "\n")
       (println (:title root-page))
-      (print-table [:n :date :time :place]
-                   (map-indexed #(assoc %2 :n (inc %1)) available-times)))))
+      (if (seq available-times)
+        (print-table [:n :date :time :place]
+                     (map-indexed #(assoc %2 :n (inc %1)) available-times))
+        (println "No times available")))))
 
 (defn gather-data [{:keys [run-params]}]
   (let [root-page (get-root-page (:base-url run-params))
