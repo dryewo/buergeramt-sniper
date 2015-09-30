@@ -3,7 +3,9 @@
             [net.cgrand.enlive-html :as html]
             [clojure.string :as str]
             [schema.core :as s]
-            [buergeramt-sniper.loader :refer [Dom]]))
+            [clj-time.format :as tf]
+            [buergeramt-sniper.loader :refer [Dom]])
+  (:import (org.joda.time DateTime)))
 
 (s/defrecord Time
   [time :- s/Str
@@ -15,7 +17,8 @@
 
 (s/defrecord OpenDate
   [text :- s/Str
-   href :- s/Str])
+   href :- s/Str
+   date :- DateTime])
 
 (s/defrecord ClosedDate
   [text :- s/Str])
@@ -46,8 +49,14 @@
 
 (s/defn parse-open-date :- OpenDate
   [dom :- Dom]
-  (strict-map->OpenDate {:text (-> (html/text dom) str/trim)
-                         :href (-> (html/select dom [:a]) first :attrs :href)}))
+  (let [href (-> (html/select dom [:a]) first :attrs :href)
+        date (->> href
+                  (re-seq #"datum=([^&]*)")
+                  first second
+                  (tf/parse (tf/formatters :date)))]
+    (strict-map->OpenDate {:text (-> (html/text dom) str/trim)
+                           :href href
+                           :date date})))
 
 (s/defn parse-month :- Month
   [dom :- Dom]

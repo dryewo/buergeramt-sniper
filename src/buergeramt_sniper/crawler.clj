@@ -3,12 +3,16 @@
             [clojure.pprint :refer [print-table]]
             [schema.core :as s]
             [buergeramt-sniper.scraper :as scraper]
-            [buergeramt-sniper.loader :as loader])
-  (:import (buergeramt_sniper.scraper RootPage CalendarPage DayPage)))
+            [buergeramt-sniper.loader :as loader]
+            [clj-time.format :as tf]
+            [clj-time.core :as t])
+  (:import (buergeramt_sniper.scraper RootPage CalendarPage DayPage)
+           (org.joda.time DateTime)))
 
 (s/defrecord AvailableDate
   [name :- s/Str
-   href :- s/Str])
+   href :- s/Str
+   date :- DateTime])
 
 (s/defrecord AvailableTime
   [date :- s/Str
@@ -35,7 +39,7 @@
   (->> [(get-calendar-page initial-page-href)]
        (remove nil?)))
 
-(s/defn get-daytimes-page :- DayPage
+(s/defn get-daytimes-page :- (s/maybe DayPage)
   [href :- s/Str]
   (some-> href
           loader/load-page
@@ -49,12 +53,13 @@
 ;       (remove nil?)
 ;       (into #{})))
 
-(s/defn collect-open-dates :- [AvailableDate]
+(s/defn collect-available-dates :- [AvailableDate]
   [calendar-pages :- [CalendarPage]]
   (for [page calendar-pages
         month (:months page)
         date (:open-dates month)]
     (strict-map->AvailableDate {:name (str (:text date) " " (:name month))
+                                :date (:date date)
                                 :href (:href date)})))
 
 (s/defn get-available-times :- [AvailableTime]
@@ -75,9 +80,26 @@
                      (map-indexed #(assoc %2 :n (inc %1)) available-times))
         (println "No times available")))))
 
-(defn gather-data [{:keys [run-params]}]
-  (let [root-page (get-root-page (:base-url run-params))
+(s/defn between-checker
+  "Returns a predicate that checks if the date is between start and end"
+  [start :- (s/maybe DateTime)
+   end :- (s/maybe DateTime)]
+  (log/spy [start end])
+  (cond
+    (and start end)
+    #(t/within? (t/interval start end) (:date %))
+    start
+    #(t/after? (:date %) start)
+    end
+    #(t/before? (:date %) end)
+    :else
+    (constantly true)))
+
+(defn gather-data [{{:keys [base-url start-date end-date]} :run-params}]
+  (let [root-page (get-root-page base-url)
         calendar-pages (get-all-calendar-pages (:appointment-href root-page))
-        open-dates (take 2 (collect-open-dates calendar-pages))
-        available-times (take 20 (get-available-times open-dates))]
+        available-dates (->> (collect-available-dates calendar-pages)
+                             (filter (between-checker start-date end-date)) ;
+                             (take 1))                      ; Safety measure to avoid banning
+        available-times (get-available-times available-dates)]
     (pretty-print root-page available-times)))
