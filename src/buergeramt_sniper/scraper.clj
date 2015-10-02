@@ -37,6 +37,9 @@
   [appointment-href :- s/Str
    title :- s/Str])
 
+(s/defrecord AppointmentPage
+  [hidden-inputs :- {s/Str s/Str}])
+
 (s/defn parse-root-page :- RootPage
   [dom :- [Dom]]
   (strict-map->RootPage
@@ -100,3 +103,16 @@
   (strict-map->DayPage {:times (->> (html/select dom [:div.timetable :tr])
                                     (map parse-timetable-record)
                                     (fix-omitted-times))}))
+
+(s/defn parse-hidden-field :- {s/Str s/Str}
+  [hidden-input :- Dom]
+  (let [{:keys [name value]} (:attrs hidden-input)]
+    {name value}))
+
+(s/defn parse-appointment-page :- AppointmentPage
+  [dom :- [Dom]]
+  (log/debug "Parsing appointment page")
+  (let [hidden-inputs (log/spy (->> (html/select dom [:div#kundendaten :form [:input (html/attr= :type "hidden")]])
+                                    (map parse-hidden-field)
+                                    (apply merge)))]
+    (strict-map->AppointmentPage {:hidden-inputs hidden-inputs})))

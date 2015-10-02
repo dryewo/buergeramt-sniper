@@ -55,7 +55,9 @@
 (defn run [system]
   (log/info "Running...")
   (log/spy system)
-  (crawler/gather-data system)
+  (crawler/get-appointment-page "https://service.berlin.de/terminvereinbarung/termin/eintragen.php?buergerID=&buergername=webreservierung&OID=52740&OIDListe=53848,53850,52740,53857,60523,22646,22647,58921,58924,58927,58930,54035,60517,22619,20497,34216,20722&datum=2015-10-30&zeit=10:40:00&behoerde=&slots=&anliegen%5B%5D=121482&dienstleister%5B%5D=121364&dienstleister%5B%5D=121362&herkunft=http://service.berlin.de/dienstleistung/121482/")
+  #_(let [available-times (crawler/gather-data system)]
+      (log/spy (first available-times)))
   #_(scheduler/add-close-fn (:scheduler system)
                             (chime-at (random-intervals 10 20)
                                       #(crawler/gather-data system))))

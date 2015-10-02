@@ -6,7 +6,7 @@
             [buergeramt-sniper.loader :as loader]
             [clj-time.format :as tf]
             [clj-time.core :as t])
-  (:import (buergeramt_sniper.scraper RootPage CalendarPage DayPage)
+  (:import (buergeramt_sniper.scraper RootPage CalendarPage DayPage AppointmentPage)
            (org.joda.time DateTime)))
 
 (s/defrecord AvailableDate
@@ -44,6 +44,12 @@
   (some-> href
           loader/load-page
           scraper/parse-daytimes-page))
+
+(s/defn get-appointment-page :- (s/maybe AppointmentPage)
+  [href :- s/Str]
+  (some-> href
+          loader/load-page
+          scraper/parse-appointment-page))
 
 ;(defn extract-prev&next [calendar-page]
 ;  (->> calendar-page
@@ -95,11 +101,13 @@
     :else
     (constantly true)))
 
-(defn gather-data [{{:keys [base-url start-date end-date]} :run-params}]
+(s/defn gather-data :- [AvailableTime]
+  [{{:keys [base-url start-date end-date]} :run-params}]
   (let [root-page (get-root-page base-url)
         calendar-pages (get-all-calendar-pages (:appointment-href root-page))
         available-dates (->> (collect-available-dates calendar-pages)
                              (filter (between-checker start-date end-date)) ;
                              (take 1))                      ; Safety measure to avoid banning
         available-times (get-available-times available-dates)]
-    (pretty-print root-page available-times)))
+    (pretty-print root-page available-times)
+    available-times))
