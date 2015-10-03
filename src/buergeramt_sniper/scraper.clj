@@ -38,7 +38,8 @@
    title :- s/Str])
 
 (s/defrecord AppointmentPage
-  [hidden-inputs :- {s/Str s/Str}])
+  [hidden-inputs :- {s/Str s/Str}
+   form-action :- s/Str])
 
 (s/defn parse-root-page :- RootPage
   [dom :- [Dom]]
@@ -112,7 +113,9 @@
 (s/defn parse-appointment-page :- AppointmentPage
   [dom :- [Dom]]
   (log/debug "Parsing appointment page")
-  (let [hidden-inputs (log/spy (->> (html/select dom [:div#kundendaten :form [:input (html/attr= :type "hidden")]])
-                                    (map parse-hidden-field)
-                                    (apply merge)))]
-    (strict-map->AppointmentPage {:hidden-inputs hidden-inputs})))
+  (let [hidden-inputs (->> (html/select dom [:div#kundendaten :form [:input (html/attr= :type "hidden")]])
+                           (map parse-hidden-field)
+                           (apply merge))
+        form-action (-> (html/select dom [:div#kundendaten :form]) first :attrs :action)]
+    (strict-map->AppointmentPage {:hidden-inputs hidden-inputs
+                                  :form-action   form-action})))

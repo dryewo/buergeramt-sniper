@@ -7,7 +7,8 @@
             [clj-time.format :as tf]
             [clj-time.core :as t])
   (:import (buergeramt_sniper.scraper RootPage CalendarPage DayPage AppointmentPage)
-           (org.joda.time DateTime)))
+           (org.joda.time DateTime)
+           (buergeramt_sniper.loader Loader)))
 
 (s/defrecord AvailableDate
   [name :- s/Str
@@ -20,36 +21,18 @@
    place :- s/Str
    href :- s/Str])
 
-(s/defn get-root-page :- RootPage
-  [href :- s/Str]
-  (some-> href
-          loader/load-page
-          scraper/parse-root-page))
-
-(s/defn get-calendar-page :- (s/maybe CalendarPage)
-  [href :- s/Str]
-  (some-> href
-          loader/load-page
-          scraper/parse-calendar-page))
+(defn get-page [system href parser-fn]
+  (some->> href
+           (loader/load-page (:loader system))
+           parser-fn))
 
 (s/defn get-all-calendar-pages :- [CalendarPage]
-  [initial-page-href :- s/Str]
+  [system
+   initial-page-href :- s/Str]
   ; TODO Implement crawling all pages
   ; For simplicity's sake return only the first one
-  (->> [(get-calendar-page initial-page-href)]
+  (->> [(get-page system initial-page-href scraper/parse-calendar-page)]
        (remove nil?)))
-
-(s/defn get-daytimes-page :- (s/maybe DayPage)
-  [href :- s/Str]
-  (some-> href
-          loader/load-page
-          scraper/parse-daytimes-page))
-
-(s/defn get-appointment-page :- (s/maybe AppointmentPage)
-  [href :- s/Str]
-  (some-> href
-          loader/load-page
-          scraper/parse-appointment-page))
 
 ;(defn extract-prev&next [calendar-page]
 ;  (->> calendar-page
@@ -69,9 +52,10 @@
                                 :href (:href date)})))
 
 (s/defn get-available-times :- [AvailableTime]
-  [available-dates :- [AvailableDate]]
+  [system
+   available-dates :- [AvailableDate]]
   (for [ad available-dates
-        t (:times (get-daytimes-page (:href ad)))]
+        t (:times (get-page system (:href ad) scraper/parse-daytimes-page))]
     (strict-map->AvailableTime (merge t {:date (:name ad)}))))
 
 (s/defn pretty-print
@@ -92,22 +76,25 @@
    end :- (s/maybe DateTime)]
   (log/spy [start end])
   (cond
-    (and start end)
-    #(t/within? (t/interval start end) (:date %))
-    start
-    #(t/after? (:date %) start)
-    end
-    #(t/before? (:date %) end)
-    :else
-    (constantly true)))
+    (and start end) #(t/within? (t/interval start end) (:date %))
+    start #(t/after? (:date %) start)
+    end #(t/before? (:date %) end)
+    :else (constantly true)))
 
-(s/defn gather-data :- [AvailableTime]
-  [{{:keys [base-url start-date end-date]} :run-params}]
-  (let [root-page (get-root-page base-url)
-        calendar-pages (get-all-calendar-pages (:appointment-href root-page))
+(s/defn gather-available-times :- [AvailableTime]
+  [{{:keys [base-url start-date end-date]} :run-params :as system}]
+  (let [root-page (get-page system base-url scraper/parse-root-page)
+        calendar-pages (get-all-calendar-pages system (:appointment-href root-page))
         available-dates (->> (collect-available-dates calendar-pages)
                              (filter (between-checker start-date end-date)) ;
                              (take 1))                      ; Safety measure to avoid banning
-        available-times (get-available-times available-dates)]
+        available-times (get-available-times system available-dates)]
     (pretty-print root-page available-times)
     available-times))
+
+(s/defn book-appointment
+  [system href]
+  (let [user-data (log/spy (select-keys (:run-params system) [:name :email]))
+        {:keys [hidden-inputs]} (s/validate AppointmentPage (log/spy (get-page system href scraper/parse-appointment-page)))]
+    (merge hidden-inputs
+           user-data)))
