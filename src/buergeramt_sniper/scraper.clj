@@ -41,6 +41,10 @@
   [hidden-inputs :- {s/Str s/Str}
    form-action :- s/Str])
 
+(s/defrecord BookingResponsePage
+  [transaction-number :- (s/named s/Str "Transaction number")
+   rejection-code :- s/Str])
+
 (s/defn parse-root-page :- RootPage
   [dom :- [Dom]]
   (strict-map->RootPage
@@ -119,3 +123,13 @@
         form-action (-> (html/select dom [:div#kundendaten :form]) first :attrs :action)]
     (strict-map->AppointmentPage {:hidden-inputs hidden-inputs
                                   :form-action   form-action})))
+
+(s/defn parse-booking-response-page :- BookingResponsePage
+  [dom :- [Dom]]
+  (log/debug "Parsing booking response page")
+  (let [[transaction-number-div] (html/select dom [:div.number-red-big])
+        [rejection-code-div] (->> (html/select dom [:div.block-item])
+                                  (filter #(re-seq #"Code zur Absage:" (html/text %))))
+        [rejection-code-span] (html/select rejection-code-div [:span])]
+    (strict-map->BookingResponsePage {:transaction-number (some-> transaction-number-div html/text str/trim)
+                                      :rejection-code     (some-> rejection-code-span html/text str/trim)})))
