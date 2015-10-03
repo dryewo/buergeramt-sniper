@@ -5,7 +5,8 @@
             [schema.core :as s]
             [clj-time.format :as tf]
             [buergeramt-sniper.loader :refer [Dom]])
-  (:import (org.joda.time DateTime)))
+  (:import (org.joda.time DateTime)
+           (java.util.regex Pattern)))
 
 (s/defrecord Time
   [time :- s/Str
@@ -41,9 +42,14 @@
   [hidden-inputs :- {s/Str s/Str}
    form-action :- s/Str])
 
-(s/defrecord BookingResponsePage
-  [transaction-number :- (s/named s/Str "Transaction number")
-   rejection-code :- s/Str])
+(s/defrecord BookingSuccessPage
+  [transaction-number :- s/Str
+   rejection-code :- s/Str
+   info-items :- {s/Str s/Str}])
+
+(s/defrecord BookingFailurePage
+  [error :- (s/maybe s/Str)
+   info-items :- (s/maybe {s/Str s/Str})])
 
 (s/defn parse-root-page :- RootPage
   [dom :- [Dom]]
@@ -124,12 +130,32 @@
     (strict-map->AppointmentPage {:hidden-inputs hidden-inputs
                                   :form-action   form-action})))
 
-(s/defn parse-booking-response-page :- BookingResponsePage
+(s/defn get-by-re :- (s/maybe s/Any)
+  "Finds a key in a map by regex, returns a value or nil"
+  [m :- (s/maybe {s/Str s/Any})
+   re :- Pattern]
+  (when-let [k (some #(when (re-seq re %) %) (keys m))]
+    (get m k)))
+
+(s/defn parse-info-items :- (s/maybe {s/Str s/Str})
+  [block-item-divs :- [Dom]]
+  (apply merge
+         (for [item block-item-divs]
+           (let [title (-> (html/select item [:.title]) first html/text str/trim)
+                 content (-> (html/select item [:* #{:div :span}]) first html/text str/trim)]
+             (when (and title content)
+               {title content})))))
+
+(s/defn parse-booking-response-page :- (s/either BookingSuccessPage BookingFailurePage)
   [dom :- [Dom]]
   (log/debug "Parsing booking response page")
-  (let [[transaction-number-div] (html/select dom [:div.number-red-big])
-        [rejection-code-div] (->> (html/select dom [:div.block-item])
-                                  (filter #(re-seq #"Code zur Absage:" (html/text %))))
-        [rejection-code-span] (html/select rejection-code-div [:span])]
-    (strict-map->BookingResponsePage {:transaction-number (some-> transaction-number-div html/text str/trim)
-                                      :rejection-code     (some-> rejection-code-span html/text str/trim)})))
+  (let [info-items (parse-info-items (html/select dom [:div.block-item]))
+        transaction-number (get-by-re info-items #"Ihre Vorgangsnummer:")
+        rejection-code (get-by-re info-items #"Code zur Absage:")]
+    (if (and transaction-number rejection-code)
+      (strict-map->BookingSuccessPage {:transaction-number transaction-number
+                                       :rejection-code     rejection-code
+                                       :info-items         info-items})
+      (let [[alert-error-div] (html/select dom [:div.alert-error])]
+        (strict-map->BookingFailurePage {:error      (some-> alert-error-div html/text str/trim)
+                                         :info-items info-items})))))

@@ -20,10 +20,46 @@
 (def Href #"^http")
 
 (s/defrecord Loader
-  [use-caching :- s/Bool])
+  [use-caching :- s/Bool
+   use-local-for-post :- (s/maybe Href)])
+
+(s/defn get-cache-file-path :- s/Str
+  [obj]
+  (str "cache/" (md5/md5 (str obj))))
+
+(s/defn read-file [file :- s/Str]
+  (with-open [in (PushbackReader. (io/reader file))]
+    (read in)))
+
+(s/defn write-file [file :- s/Str
+                    obj]
+  (with-open [out (io/writer file)]
+    (binding [*print-dup* true
+              *out* out]
+      (prn obj))))
+
+(s/defn load-from-cache
+  [{:keys [use-caching]} :- Loader
+   key-obj]
+  (when use-caching
+    (let [cache-file-path (get-cache-file-path key-obj)]
+      (when (.exists (io/as-file cache-file-path))
+        (log/debug "Cache: reading from" cache-file-path)
+        (read-file cache-file-path)))))
+
+(s/defn save-to-cache
+  [{:keys [use-caching]} :- Loader
+   key-obj
+   obj]
+  (when use-caching
+    (let [cache-file-path (get-cache-file-path key-obj)]
+      (io/make-parents cache-file-path)
+      (log/debug "Cache: writing into" cache-file-path)
+      (write-file cache-file-path obj))))
 
 (s/defn resolve-href :- Dom
-  "Given a node, resolve its :href attr if it is relative, return transformed node"
+  "Given a node (probably :a of :form), resolve its :href or :action attr if it is relative,
+  return transformed node"
   [base-url :- Href
    node :- Dom]
   (let [resolve-fn #(try (urly/resolve base-url %)
@@ -39,67 +75,52 @@
   (-> (html/html-snippet body)
       (html/at [#{:a :form}] (partial resolve-href url))))
 
-(s/defn get-cache-file-path :- s/Str
-  [obj]
-  (str "cache/" (md5/md5 (str obj))))
-
-(s/defn load-from-cache
+(s/defn load-page-impl :- [Dom]
+  "Load a page (possibly from the cache) and parse it, return DOM or nil"
   [loader :- Loader
-   key-obj]
-  (when (:use-caching loader)
-    (let [cache-file-path (get-cache-file-path key-obj)]
-      (when (.exists (io/as-file cache-file-path))
-        (log/debug "Reading from" cache-file-path)
-        (with-open [in (PushbackReader. (io/reader cache-file-path))]
-          (read in))))))
+   {:keys [method url] :as request-opts} :- {s/Keyword s/Any}]
+  (log/debug "Loading" method url)
+  (let [cached-response (load-from-cache loader request-opts)
+        response (or cached-response @(http/request request-opts))
+        {:keys [status body error]} response]
+    (log/trace [status error])
+    (if error
+      (log/error "Error:" error)
+      (if (not= 200 status)
+        (log/error "Status:" status)
+        (do
+          (when (and (nil? cached-response)
+                     (not (re-seq #"localhost" url)))       ; Never cache dev-server responses
+            (save-to-cache loader request-opts response))
+          (parse-html url body))))))
 
-(s/defn save-to-cache
+(def DEFAULT_HEADERS {"User-Agent" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36"})
+
+(s/defn replace-host-addr :- Href
+  "Replaces protocol and host parts in the url"
+  [where :- Href
+   with :- Href]
+  (let [where-path (urly/path-of where)
+        where-tail (if (= "/" where-path)
+                     "/"
+                     (subs where (.indexOf where where-path)))]
+    (str with where-tail)))
+
+(s/defn load-page-get :- [Dom]
   [loader :- Loader
-   href :- Href
-   obj]
-  (when (:use-caching loader)
-    (let [cache-file-path (get-cache-file-path href)]
-      (io/make-parents cache-file-path)
-      (with-open [out (io/writer cache-file-path)]
-        (binding [*print-dup* true
-                  *out* out]
-          (prn obj))))))
+   url :- Href]
+  (load-page-impl loader {:method  :get
+                          :url     url
+                          :headers DEFAULT_HEADERS}))
 
-(def DEFAULT_HEADERS {"User-Agent" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36"
-                      })
-
-(s/defn load-page :- [Dom]
-  "Load a page and parse it, return DOM or nil"
-  [loader :- Loader
-   href :- Href]
-  (log/debug "Loading" href)
-  (let [cache-key-obj href]
-    (let [response (or (load-from-cache loader cache-key-obj)
-                       @(http/get href {:headers DEFAULT_HEADERS}))
-          {:keys [status body error]} response]
-      (log/trace [status error])
-      (if error
-        (log/error "Error:" error)
-        (if (not= 200 status)
-          (log/error "Status:" status)
-          (do (save-to-cache loader cache-key-obj response)
-              (parse-html href body)))))))
-
-#_(s/defn load-page-post :- [Dom]
-    [loader :- Loader
-     href :- s/Str
-     form-params :- {s/Str s/Str}]
-    (log/debug "Loading" href)
-    (log/spy form-params)
-    (log/debug "Loading" href)
-    (if-let [cached-body (load-from-cache loader href)]
-      (parse-html href cached-body)
-      (let [{:keys [status body error]} @(http/post href {:headers     DEFAULT_HEADERS
-                                                          :form-params form-params})]
-        (log/trace [status error])
-        (if error
-          (log/error "Error:" error)
-          (if (not= 200 status)
-            (log/error "Status:" status)
-            (do (save-to-cache loader href body)
-                (parse-html href body)))))))
+(s/defn load-page-post :- [Dom]
+  [{:keys [use-local-for-post] :as loader} :- Loader
+   url :- Href
+   request-opts :- {s/Keyword s/Any}]
+  (load-page-impl loader
+                  (merge-with merge
+                              request-opts
+                              {:method  :post
+                               :url     (cond-> url
+                                                use-local-for-post (replace-host-addr use-local-for-post))
+                               :headers DEFAULT_HEADERS})))

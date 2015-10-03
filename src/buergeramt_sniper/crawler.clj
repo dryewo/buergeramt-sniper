@@ -1,14 +1,11 @@
 (ns buergeramt-sniper.crawler
   (:require [clojure.tools.logging :as log]
-            [clojure.pprint :refer [print-table]]
             [schema.core :as s]
             [buergeramt-sniper.scraper :as scraper]
             [buergeramt-sniper.loader :as loader]
-            [clj-time.format :as tf]
             [clj-time.core :as t])
-  (:import (buergeramt_sniper.scraper RootPage CalendarPage DayPage AppointmentPage)
-           (org.joda.time DateTime)
-           (buergeramt_sniper.loader Loader)))
+  (:import (buergeramt_sniper.scraper RootPage CalendarPage AppointmentPage BookingFailurePage BookingSuccessPage)
+           (org.joda.time DateTime)))
 
 (s/defrecord AvailableDate
   [name :- s/Str
@@ -22,9 +19,12 @@
    href :- s/Str])
 
 (defn get-page [system href parser-fn]
-  (some->> href
-           (loader/load-page (:loader system))
-           parser-fn))
+  (some-> (loader/load-page-get (:loader system) href)
+          parser-fn))
+
+(defn post-page [system href request-opts parser-fn]
+  (some-> (loader/load-page-post (:loader system) href request-opts)
+          parser-fn))
 
 (s/defn get-all-calendar-pages :- [CalendarPage]
   [system
@@ -58,18 +58,6 @@
         t (:times (get-page system (:href ad) scraper/parse-daytimes-page))]
     (strict-map->AvailableTime (merge t {:date (:name ad)}))))
 
-(s/defn pretty-print
-  [root-page :- RootPage
-   available-times :- [AvailableTime]]
-  (log/info
-    (with-out-str
-      (println "\n")
-      (println (:title root-page))
-      (if (seq available-times)
-        (print-table [:n :date :time :place]
-                     (map-indexed #(assoc %2 :n (inc %1)) available-times))
-        (println "No times available")))))
-
 (s/defn between-checker
   "Returns a predicate that checks if the date is between start and end"
   [start :- (s/maybe DateTime)
@@ -89,12 +77,22 @@
                              (filter (between-checker start-date end-date)) ;
                              (take 1))                      ; Safety measure to avoid banning
         available-times (get-available-times system available-dates)]
-    (pretty-print root-page available-times)
     available-times))
 
-(s/defn book-appointment
+(s/defrecord BookingResult
+  [success :- s/Bool
+   booking-page :- (s/either BookingSuccessPage BookingFailurePage)])
+
+(s/defn book-appointment :- BookingResult
   [system href]
-  (let [user-data (log/spy (select-keys (:run-params system) [:name :email]))
-        {:keys [hidden-inputs]} (s/validate AppointmentPage (log/spy (get-page system href scraper/parse-appointment-page)))]
-    (merge hidden-inputs
-           user-data)))
+  (let [{:keys [user-form-params]} (:run-params system)
+        {:keys [hidden-inputs form-action]} (s/validate AppointmentPage (get-page system href scraper/parse-appointment-page))
+        booking-response (post-page system
+                                    form-action
+                                    {:form-params (merge hidden-inputs
+                                                         {"agbgelesen" "1"}
+                                                         user-form-params)
+                                     :headers     {"Referer" href}}
+                                    scraper/parse-booking-response-page)]
+    (strict-map->BookingResult {:success      (if (:transaction-number booking-response) true false)
+                                :booking-page booking-response})))

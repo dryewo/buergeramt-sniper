@@ -4,20 +4,25 @@
             [clojure.tools.logging :as log]))
 
 (defprotocol IScheduler
-  (add-close-fn [this close-fn]))
+  (set-close-fn [this close-fn]))
 
 (s/defrecord Scheduler []
   component/Lifecycle
   (start [this]
     (log/debug "Starting scheduler...")
-    (assoc this :close-fns (atom [])))
+    (assoc this :close-fn (atom nil)))
   (stop [this]
     (log/debug "Stopping scheduler...")
-    (doseq [close-fn @(:close-fns this)]
-      (close-fn))
-    (swap! (:close-fns this) (constantly [])))
+    (swap! (:close-fn this) (fn [old-close-fn]
+                              (when old-close-fn
+                                (old-close-fn))
+                              nil))
+    this)
 
   IScheduler
-  (add-close-fn [this close-fn]
-    (log/debug "Adding close-fn")
-    (swap! (:close-fns this) conj close-fn)))
+  (set-close-fn [this close-fn]
+    (log/trace "Replacing close-fn")
+    (swap! (:close-fn this) (fn [old-close-fn]
+                              (when old-close-fn
+                                (old-close-fn))
+                              close-fn))))
