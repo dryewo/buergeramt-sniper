@@ -20,7 +20,7 @@
 (defonce dev-server (atom nil))
 
 (defn dev-server-fn [req]
-  (log/spy req)
+  (log/spy (assoc req :body (slurp (:body req))))
   {:status  200
    :headers {"Content-Type" "text/html"}
    :body    "<html><body>YES</body></html>"})
