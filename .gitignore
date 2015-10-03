@@ -10,3 +10,4 @@ pom.xml.asc
 /.idea
 /*.iml
 /cache
+/sniper.yaml

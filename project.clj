@@ -11,6 +11,7 @@
                  [prismatic/schema "1.0.1"]
                  [jarohen/chime "0.1.6"]
                  [pandect "0.5.4"]
+                 [clj-yaml "0.4.0"]
                  [org.clojure/tools.logging "0.3.1"]
                  [ch.qos.logback/logback-classic "1.1.3"]]
   :main ^:skip-aot buergeramt-sniper.core
