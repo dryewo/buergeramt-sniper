@@ -7,7 +7,8 @@
             [clj-yaml.core :as yaml]
             [buergeramt-sniper.scheduler :as scheduler]
             [buergeramt-sniper.loader :as loader]
-            [buergeramt-sniper.api :as api])
+            [buergeramt-sniper.api :as api]
+            [clj-http.conn-mgr :as conn-mgr])
   (:gen-class)
   (:import (org.joda.time DateTime)))
 
@@ -42,8 +43,10 @@
                                  :start-date       (some->> start-date (tf/parse fmt))
                                  :end-date         (some->> end-date (tf/parse fmt))
                                  :user-form-params user-form-params})
-                  :loader (loader/strict-map->Loader {:use-caching        false
-                                                      :use-local-for-post "http://localhost:8000"})
+                  :loader (loader/strict-map->Loader
+                            {:use-caching        false
+                             :use-local-for-post "http://localhost:8000"
+                             :connection-manager (conn-mgr/make-socks-proxied-conn-manager "localhost" 9050)})
                   :scheduler (scheduler/strict-map->Scheduler {}))
          started-system (component/start system)]
      (log/info "System started.")

@@ -48,8 +48,7 @@
    info-items :- {s/Str s/Str}])
 
 (s/defrecord BookingFailurePage
-  [error :- (s/maybe s/Str)
-   info-items :- (s/maybe {s/Str s/Str})])
+  [error :- (s/maybe s/Str)])
 
 (s/defn parse-root-page :- RootPage
   [dom :- [Dom]]
@@ -157,5 +156,4 @@
                                        :rejection-code     rejection-code
                                        :info-items         info-items})
       (let [[alert-error-div] (html/select dom [:div.alert-error])]
-        (strict-map->BookingFailurePage {:error      (some-> alert-error-div html/text str/trim)
-                                         :info-items info-items})))))
+        (strict-map->BookingFailurePage {:error (some-> alert-error-div html/text str/trim)})))))

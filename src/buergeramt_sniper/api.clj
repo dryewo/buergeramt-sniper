@@ -25,14 +25,19 @@
 
 (s/defn do-book :- (s/maybe BookingResult)
   [system initial-calendar-href]
-  (when-let [available-times (seq (crawler/gather-available-times system initial-calendar-href))]
-    (pretty-print-available-times available-times)
-    (crawler/strict-map->BookingResult
-      {:success      true
-       :booking-page (scraper/strict-map->BookingSuccessPage {:transaction-number "123"
-                                                              :rejection-code     "456"
-                                                              :info-items         {"Hello" "World"}})})
-    #_(crawler/book-appointment system (:href (first available-times)))))
+  (try
+    (when-let [available-times (seq (crawler/gather-available-times system initial-calendar-href))]
+      (pretty-print-available-times available-times)
+      (crawler/strict-map->BookingResult
+        {:success      true
+         :booking-page (scraper/strict-map->BookingSuccessPage {:transaction-number "123"
+                                                                :rejection-code     "456"
+                                                                :info-items         {"Hello" "World"}})})
+      #_(crawler/book-appointment system (:href (first available-times))))
+    (catch Exception e
+      (crawler/strict-map->BookingResult
+        {:success      false
+         :booking-page (scraper/strict-map->BookingFailurePage {:error (str e)})}))))
 
 (s/defn pretty-print-booking-success
   [{:keys [info-items]} :- BookingSuccessPage]
@@ -50,7 +55,9 @@
     (format "Requests: %d, Time elapsed: %d min, Average interval: %.1f sec"
             req-count (-> time-total t/in-minutes) average-interval-sec)))
 
-(def TRY_FREQ [25 35])
+(def TRY_FREQ
+  "[min-seconds max-seconds]"
+  [5 15])
 
 (defn try-book-until-success
   "Tries to find earliest available time and book it.

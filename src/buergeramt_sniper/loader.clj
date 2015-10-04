@@ -1,6 +1,6 @@
 (ns buergeramt-sniper.loader
   (:require [clojure.tools.logging :as log]
-            [org.httpkit.client :as http]
+            [clj-http.client :as http]
             [net.cgrand.enlive-html :as html]
             [clojurewerkz.urly.core :as urly]
             [schema.core :as s]
@@ -21,7 +21,8 @@
 
 (s/defrecord Loader
   [use-caching :- s/Bool
-   use-local-for-post :- (s/maybe Href)])
+   use-local-for-post :- (s/maybe Href)
+   connection-manager])
 
 (s/defn get-cache-file-path :- s/Str
   [obj]
@@ -81,7 +82,7 @@
    {:keys [method url] :as request-opts} :- {s/Keyword s/Any}]
   (log/debug "Loading" method url)
   (let [cached-response (load-from-cache loader request-opts)
-        response (or cached-response @(http/request request-opts))
+        response (or cached-response (http/request request-opts))
         {:keys [status body error]} response]
     (log/trace [status error])
     (if error
@@ -107,11 +108,12 @@
     (str with where-tail)))
 
 (s/defn load-page-get :- [Dom]
-  [loader :- Loader
+  [{:keys [connection-manager] :as loader} :- Loader
    url :- Href]
-  (load-page-impl loader {:method  :get
-                          :url     url
-                          :headers DEFAULT_HEADERS}))
+  (load-page-impl loader {:method             :get
+                          :url                url
+                          :headers            DEFAULT_HEADERS
+                          :connection-manager connection-manager}))
 
 (s/defn load-page-post :- [Dom]
   [{:keys [use-local-for-post] :as loader} :- Loader

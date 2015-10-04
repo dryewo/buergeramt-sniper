@@ -10,7 +10,10 @@
             [buergeramt-sniper.core]
             [schema.core :as s]
             [org.httpkit.server :as server]
-            [clojure.tools.logging :as log]))
+            [clojure.tools.logging :as log]
+            [clj-http.client :as http]
+            [clj-http.conn-mgr :as conn-mgr]
+            [net.cgrand.enlive-html :as html]))
 
 (def system
   "A Var containing an object representing the application under
@@ -59,3 +62,14 @@
   []
   (stop)
   (refresh :after 'user/go))
+
+(def connection-manager (conn-mgr/make-socks-proxied-conn-manager "localhost" 9050))
+
+(defn my-ip []
+  (-> "http://checkip.dyndns.org"
+      (http/get {:connection-manager connection-manager})
+      :body
+      html/html-snippet
+      (html/select [:body])
+      first
+      html/text))
