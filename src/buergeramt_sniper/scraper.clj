@@ -35,7 +35,7 @@
   [months :- [Month]])
 
 (s/defrecord RootPage
-  [appointment-href :- s/Str
+  [initial-calendar-href :- s/Str
    title :- s/Str])
 
 (s/defrecord AppointmentPage
@@ -54,8 +54,8 @@
 (s/defn parse-root-page :- RootPage
   [dom :- [Dom]]
   (strict-map->RootPage
-    {:appointment-href (-> (html/select dom [:div.zmstermin-multi :a.btn]) first :attrs :href)
-     :title            (-> (html/select dom [:div.article :div.header :h1.title]) first html/text str/trim)}))
+    {:initial-calendar-href (-> (html/select dom [:div.zmstermin-multi :a.btn]) first :attrs :href)
+     :title                 (-> (html/select dom [:div.article :div.header :h1.title]) first html/text str/trim)}))
 
 (s/defn parse-closed-date :- ClosedDate
   [dom :- Dom]

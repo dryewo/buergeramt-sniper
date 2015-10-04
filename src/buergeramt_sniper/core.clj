@@ -55,7 +55,7 @@
   (let [
         ;base-url "https://service.berlin.de/dienstleistung/121482/"
         ;base-url "https://service.berlin.de/dienstleistung/326423/"
-        base-url "https://service.berlin.de/dienstleistung/120686/"
+        base-url "https://service.berlin.de/dienstleistung/120686/" ; Anmeldung einer Wohnung
         dates {
                ;:start-date "2015-10-10"
                ;:end-date "2015-10-13"
@@ -69,7 +69,7 @@
   [system]
   (log/info " Running... ")
   (log/spy system)
-  (api/try-book-until-success system))
+  (api/start-trying system))
 
 (defn -main
   "Entry point when run from a command line"

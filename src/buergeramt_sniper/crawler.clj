@@ -18,6 +18,10 @@
    place :- s/Str
    href :- s/Str])
 
+(s/defrecord BookingResult
+  [success :- s/Bool
+   booking-page :- (s/either BookingSuccessPage BookingFailurePage)])
+
 (defn get-page [system href parser-fn]
   (some-> (loader/load-page-get (:loader system) href)
           parser-fn))
@@ -25,6 +29,10 @@
 (defn post-page [system href request-opts parser-fn]
   (some-> (loader/load-page-post (:loader system) href request-opts)
           parser-fn))
+
+(s/defn get-root-page :- RootPage
+  [system url]
+  (get-page system url scraper/parse-root-page))
 
 (s/defn get-all-calendar-pages :- [CalendarPage]
   [system
@@ -62,7 +70,6 @@
   "Returns a predicate that checks if the date is between start and end"
   [start :- (s/maybe DateTime)
    end :- (s/maybe DateTime)]
-  (log/spy [start end])
   (cond
     (and start end) #(t/within? (t/interval start end) (:date %))
     start #(t/after? (:date %) start)
@@ -70,18 +77,14 @@
     :else (constantly true)))
 
 (s/defn gather-available-times :- [AvailableTime]
-  [{{:keys [base-url start-date end-date]} :run-params :as system}]
-  (let [root-page (get-page system base-url scraper/parse-root-page)
-        calendar-pages (get-all-calendar-pages system (:appointment-href root-page))
+  [{{:keys [start-date end-date]} :run-params :as system}
+   intial-calendar-href]
+  (let [calendar-pages (get-all-calendar-pages system intial-calendar-href)
         available-dates (->> (collect-available-dates calendar-pages)
                              (filter (between-checker start-date end-date)) ;
                              (take 1))                      ; Safety measure to avoid banning
         available-times (get-available-times system available-dates)]
     available-times))
-
-(s/defrecord BookingResult
-  [success :- s/Bool
-   booking-page :- (s/either BookingSuccessPage BookingFailurePage)])
 
 (s/defn book-appointment :- BookingResult
   [system href]
