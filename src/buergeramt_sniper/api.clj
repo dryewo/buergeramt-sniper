@@ -12,8 +12,6 @@
   (:import (buergeramt_sniper.crawler BookingResult AvailableTime)
            (buergeramt_sniper.scraper BookingSuccessPage)))
 
-
-
 (defn rand-int-between [[low high]]
   (+ low (rand-int (- high low))))
 
@@ -46,24 +44,40 @@
       (doseq [[k v] info-items]
         (println k v)))))
 
-(def TRY_FREQ [10 20])
+(defn format-stats [{:keys [req-count start-time]}]
+  (let [time-total (t/interval start-time (t/now))
+        average-interval-sec (-> time-total t/in-seconds double (/ req-count))]
+    (format "Requests: %d, Time elapsed: %d min, Average interval: %.1f sec"
+            req-count (-> time-total t/in-minutes) average-interval-sec)))
+
+(def TRY_FREQ [25 35])
 
 (defn try-book-until-success
   "Tries to find earliest available time and book it.
   In case of failure schedules a retry after a few seconds."
-  [system initial-calendar-href]
-  (let [result (do-book system initial-calendar-href)]
-    (if (:success result)
-      (pretty-print-booking-success (:booking-page result))
-      (let [next-try-time (-> (rand-int-between TRY_FREQ) t/secs t/from-now)
-            error (-> result :booking-page :error)]
-        (if error
-          (log/info "Failed because of:" error)
-          (log/info "No available time slots found."))
-        (log/debug "Trying again at" (tf/unparse (tf/formatters :time) next-try-time))
-        (scheduler/set-close-fn (:scheduler system)
-                                (chime-at [next-try-time]
-                                          (fn [_] (try-book-until-success system initial-calendar-href))))))))
+  ([system initial-calendar-href]
+   (try-book-until-success system initial-calendar-href {:req-count  0
+                                                         :start-time (t/now)}))
+  ([system initial-calendar-href stats]
+   (log/debug (format-stats stats))
+   (let [result (do-book system initial-calendar-href)]
+     (if (:success result)
+       (pretty-print-booking-success (:booking-page result))
+       (let [next-try-time (-> (rand-int-between TRY_FREQ) t/secs t/from-now)
+             error (-> result :booking-page :error)]
+         (if error
+           (log/info "Failed because of:" error)
+           (log/info "No available time slots found."))
+         (log/debug "Trying again at" (tf/unparse (tf/formatters :time) next-try-time))
+         (let [new-stats (-> stats
+                             (update-in [:req-count] inc))]
+           (scheduler/set-close-fn (:scheduler system)
+                                   (chime-at [next-try-time]
+                                             (fn [_]
+                                               (try-book-until-success
+                                                 system
+                                                 initial-calendar-href
+                                                 new-stats))))))))))
 
 (defn start-trying
   "Makes preparational requests and then starts scanning available dates every few seconds."
