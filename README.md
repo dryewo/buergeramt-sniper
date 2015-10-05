@@ -2,7 +2,6 @@
 
 A useful tool that helps to get an appointment at Berlin public services (https://service.berlin.de/dienstleistungen/)
 
-
 ## Installation
 
 - Install [Leiningen](http://leiningen.org/) to be able to use Clojure.
@@ -53,25 +52,33 @@ Then finally run the **sniper** and wait for it to find an appointment for you.
 
     $ lein run https://service.berlin.de/dienstleistung/120686/
 
+See **Options** and **Examples** sections for more information.
+
 ## Options
 
-FIXME: listing of options this app accepts.
+```
+Usage: lein run -- [options] service-url
+
+Options:
+  -s, --start-date <YYYY-MM-dd>               Start of the desired date interval (inclusive).
+  -e, --end-date <YYYY-MM-dd>                 End of the desired date interval (exclusive).
+  -c, --config CONFIG_FILE       sniper.yaml  Config file name.
+      --dry-run                               Look for the time, but don't book it when it's found.
+      --socks <host:port>                     Use SOCKS proxy for scanning (to avoid banning). The actual booking request will be made directly.
+  -h, --help                                  Show this help message
+```
 
 ## Examples
 
-...
-
-### Bugs
-
-...
-
-### Any Other Sections
-### That You Think
-### Might be Useful
+```
+$ lein run -- --socks localhost:9050 "https://service.berlin.de/dienstleistung/120686" --dry-run -s 2015-10-06 -e 2015-10-08
+# Or
+$ java -jar target/uberjar/buergeramt-sniper.jar --socks localhost:9050 "https://service.berlin.de/dienstleistung/120686" --dry-run -s 2015-10-06 -e 2015-10-08
+```
 
 ## License
 
-Copyright © 2015 FIXME
+Copyright © 2015 Dmitrii Balakhonskii
 
 Distributed under the Eclipse Public License either version 1.0 or (at
 your option) any later version.

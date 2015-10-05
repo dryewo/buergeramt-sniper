@@ -1,6 +1,6 @@
-(defproject buergeramt-sniper "0.1.0-SNAPSHOT"
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
+(defproject buergeramt-sniper "1.0.0"
+  :description "Buergeramt-sniper"
+  :url "https://github.com/dryewo/buergeramt-sniper"
   :license {:name "Eclipse Public License"
             :url  "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.7.0"]
