@@ -53,13 +53,13 @@ EMail: michael.jackson@example.com
 telefonnummer_fuer_rueckfragen: "+4915781399988"
 ```
 
-Before starting the **sniper**, run Tor in a separate terminal session:
+Before starting the **buergeramt-sniper**, run Tor in a separate terminal session:
 
     $ tor MaxCircuitDirtiness 60
 
 Tor starts to listen on port 9050 by default, works as a SOCKS proxy and changes IPs every 60 seconds. After you're done, you can stop it with `Ctrl-C`.
 
-Then finally run the **sniper** and wait for it to find an appointment for you.
+Then finally run the **buergeramt-sniper** and wait for it to find an appointment for you.
 
     $ lein run https://service.berlin.de/dienstleistung/120686/
 
