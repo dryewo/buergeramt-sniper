@@ -7,7 +7,7 @@ A useful tool that helps to get an appointment at Berlin public services (https:
 - Install [Leiningen](http://leiningen.org/) to be able to use Clojure.
 - Clone the repo.
 
-It is also highly recommended to use [Tor](https://www.torproject.org/docs/documentation.html.en) for IP address cycling, because otherwise there is a chance of being banned for too much requests (HTTP 429).
+It is also highly recommended to use [Tor](https://www.torproject.org/docs/documentation.html.en) for IP address cycling, because otherwise there is a chance of being banned for too many requests (HTTP 429).
 
     $ brew install tor
 
@@ -39,14 +39,13 @@ Create a file `sniper.yaml` in the project root and put there the strings that y
 Nachname: Michael Jackson
 EMail: michael.jackson@example.com
 telefonnummer_fuer_rueckfragen: "+4915781399988"
-
 ```
 
 Before starting the **sniper**, run Tor in a separate terminal session:
 
     $ tor MaxCircuitDirtiness 60
 
-Tor starts to listen on port 9050 by default, works as a SOCKS proxy and changes IPs every 60 seconds. After you've done, you can stop it with `Ctrl-C`.
+Tor starts to listen on port 9050 by default, works as a SOCKS proxy and changes IPs every 60 seconds. After you're done, you can stop it with `Ctrl-C`.
 
 Then finally run the **sniper** and wait for it to find an appointment for you.
 
@@ -75,6 +74,10 @@ $ lein run -- --socks localhost:9050 "https://service.berlin.de/dienstleistung/1
 # Or
 $ java -jar target/uberjar/buergeramt-sniper.jar --socks localhost:9050 "https://service.berlin.de/dienstleistung/120686" --dry-run -s 2015-10-06 -e 2015-10-08
 ```
+
+## Known issues and limitations
+
+1. No scanning of all available dates, just those which are seen on the initial calendar page (usually the current month and the month after). But taking into account the most requested use case (need an appointment in the next couple of days) that is enough. Also it reduces the number of necessary requests.
 
 ## License
 
