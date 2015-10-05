@@ -60,7 +60,7 @@ Usage: lein run -- [options] service-url
 
 Options:
   -s, --start-date <YYYY-MM-dd>               Start of the desired date interval (inclusive).
-  -e, --end-date <YYYY-MM-dd>                 End of the desired date interval (exclusive).
+  -e, --end-date <YYYY-MM-dd>                 End of the desired date interval (inclusive).
   -c, --config CONFIG_FILE       sniper.yaml  Config file name.
       --dry-run                               Look for the time, but don't book it when it's found.
       --socks <host:port>                     Use SOCKS proxy for scanning (to avoid banning). The actual booking request will be made directly.
