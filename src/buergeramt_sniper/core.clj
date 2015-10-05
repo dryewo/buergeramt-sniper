@@ -39,7 +39,7 @@
                                 :user-form-params user-form-params})
                  :loader (loader/strict-map->Loader
                            {:use-caching        false
-                            :use-local-for-post "http://localhost:8000"
+                            :use-local-for-post nil #_"http://localhost:8000"
                             :connection-manager (some->> (:socks options)
                                                          (apply conn-mgr/make-socks-proxied-conn-manager))})
                  :scheduler (scheduler/strict-map->Scheduler {}))
