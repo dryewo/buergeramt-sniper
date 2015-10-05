@@ -123,6 +123,7 @@
                   (merge-with merge
                               request-opts
                               {:method  :post
-                               :url     (cond-> url
-                                                use-local-for-post (replace-host-addr use-local-for-post))
+                               :url     (if use-local-for-post
+                                          (replace-host-addr url use-local-for-post)
+                                          url)
                                :headers DEFAULT_HEADERS})))

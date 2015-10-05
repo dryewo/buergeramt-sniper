@@ -68,27 +68,40 @@
 
 (s/defn between-checker
   "Returns a predicate that checks if the date is between start and end"
-  [start :- (s/maybe DateTime)
-   end :- (s/maybe DateTime)]
-  (cond
-    (and start end) #(t/within? (t/interval start end) (:date %))
-    start #(t/after? (:date %) start)
-    end #(t/before? (:date %) end)
-    :else (constantly true)))
+  [start_ :- (s/maybe DateTime)
+   end_ :- (s/maybe DateTime)]
+  ; Adjust start & end for intuitive comparison
+  (let [start (some-> start_ (t/minus (t/seconds 1)))
+        end (some-> end_ (t/plus (t/days 1)))]
+    (cond
+      (and start end) #(t/within? (t/interval start end) (:date %))
+      start #(t/after? (:date %) start)
+      end #(t/before? (:date %) end)
+      :else (constantly true))))
 
 (s/defn gather-available-times :- [AvailableTime]
-  [{{:keys [start-date end-date]} :run-params :as system}
+  [system
    intial-calendar-href]
-  (let [calendar-pages (get-all-calendar-pages system intial-calendar-href)
+  (let [{:keys [start-date end-date]} (-> system :run-params :options)
+        calendar-pages (get-all-calendar-pages system intial-calendar-href)
         available-dates (->> (collect-available-dates calendar-pages)
                              (filter (between-checker start-date end-date)) ;
                              (take 1))                      ; Safety measure to avoid banning
         available-times (get-available-times system available-dates)]
     available-times))
 
+(s/defn book-appointment-fake :- BookingResult
+  [_ _]
+  (strict-map->BookingResult
+    {:success      true
+     :booking-page (scraper/strict-map->BookingSuccessPage
+                     {:transaction-number "000"
+                      :rejection-code     "000"
+                      :info-items         {"Dry run completed" ""}})}))
+
 (s/defn book-appointment :- BookingResult
   [system href]
-  (let [{:keys [user-form-params]} (:run-params system)
+  (let [{:keys [user-form-params]} (-> system :run-params)
         {:keys [hidden-inputs form-action]} (s/validate AppointmentPage (get-page system href scraper/parse-appointment-page))
         booking-response (post-page system
                                     form-action

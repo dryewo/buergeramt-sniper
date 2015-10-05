@@ -13,9 +13,13 @@
                  [jarohen/chime "0.1.6"]
                  [pandect "0.5.4"]
                  [clj-yaml "0.4.0"]
+                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]
+                 [clj-time "0.11.0"]
+                 [org.clojure/tools.cli "0.3.3"]
                  [org.clojure/tools.logging "0.3.1"]
                  [ch.qos.logback/logback-classic "1.1.3"]]
   :main ^:skip-aot buergeramt-sniper.core
+  :uberjar-name "buergeramt-sniper.jar"
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}
              :repl    {:repl-options {:init-ns user}

@@ -8,14 +8,15 @@
             [buergeramt-sniper.scheduler :as scheduler]
             [buergeramt-sniper.loader :as loader]
             [buergeramt-sniper.api :as api]
-            [clj-http.conn-mgr :as conn-mgr])
+            [clojure.tools.cli :as cli]
+            [clojure.core.async :refer [<!!]]
+            [clj-http.conn-mgr :as conn-mgr]
+            [clojure.string :as str])
   (:gen-class)
   (:import (org.joda.time DateTime)))
 
 (s/defrecord RunParams
-  [base-url :- s/Str
-   start-date :- (s/maybe DateTime)
-   end-date :- (s/maybe DateTime)
+  [options :- {s/Keyword s/Any}
    user-form-params :- {s/Keyword s/Str}])
 
 (s/defschema SniperYaml
@@ -29,43 +30,22 @@
 
 (defn init
   "Configure system and start it"
-  ([user-form-params base-url]
-   (init user-form-params base-url nil nil))
-  ([user-form-params base-url end-date]
-   (init user-form-params base-url nil end-date))
-  ([user-form-params base-url start-date end-date]
-   (log/info "Starting system...")
-   (log/spy :info user-form-params)
-   (let [fmt (tf/formatters :date)
-         system (component/system-map
-                  :run-params (strict-map->RunParams
-                                {:base-url         base-url
-                                 :start-date       (some->> start-date (tf/parse fmt))
-                                 :end-date         (some->> end-date (tf/parse fmt))
-                                 :user-form-params user-form-params})
-                  :loader (loader/strict-map->Loader
-                            {:use-caching        false
-                             :use-local-for-post "http://localhost:8000"
-                             :connection-manager (conn-mgr/make-socks-proxied-conn-manager "localhost" 9050)})
-                  :scheduler (scheduler/strict-map->Scheduler {}))
-         started-system (component/start system)]
-     (log/info "System started.")
-     started-system)))
-
-(defn init-debug
-  "Provide run-params which are normally supplied wia command-line, then run init"
-  []
-  (let [
-        ;base-url "https://service.berlin.de/dienstleistung/121482/"
-        ;base-url "https://service.berlin.de/dienstleistung/326423/"
-        base-url "https://service.berlin.de/dienstleistung/120686/" ; Anmeldung einer Wohnung
-        dates {
-               ;:start-date "2015-10-10"
-               ;:end-date "2015-10-13"
-               }
-        user-form-params (read-yaml-config "sniper.yaml")
-        ]
-    (init user-form-params base-url (:start-date dates) (:end-date dates))))
+  [options user-form-params]
+  (log/info "Starting system...")
+  (log/spy :info user-form-params)
+  (let [system (component/system-map
+                 :run-params (strict-map->RunParams
+                               {:options          options
+                                :user-form-params user-form-params})
+                 :loader (loader/strict-map->Loader
+                           {:use-caching        false
+                            :use-local-for-post "http://localhost:8000"
+                            :connection-manager (some->> (:socks options)
+                                                         (apply conn-mgr/make-socks-proxied-conn-manager))})
+                 :scheduler (scheduler/strict-map->Scheduler {}))
+        started-system (component/start system)]
+    (log/info "System started.")
+    started-system))
 
 (defn run
   "Main function that is called after the system is started"
@@ -74,10 +54,69 @@
   (log/spy system)
   (api/start-trying system))
 
+(defn parse-date [date-str]
+  (tf/parse (tf/formatters :date) date-str))
+
+(defn parse-socks [host:port]
+  (let [[host port] (str/split host:port #":")]
+    [host (Integer/parseInt port)]))
+
+(defn init-debug
+  "Provide run-params which are normally supplied wia command-line, then run init"
+  []
+  (let [options {
+                 ;:base-url "https://service.berlin.de/dienstleistung/121482/"
+                 :base-url   "https://service.berlin.de/dienstleistung/326423/"
+                 ;:base-url   "https://service.berlin.de/dienstleistung/120686/" ; Anmeldung einer Wohnung
+                 :start-date (parse-date "2015-10-06")
+                 ;:end-date (parse-date "2015-10-08")
+                 :socks      (parse-socks "localhost:9050")
+                 :dry-run    true
+                 }
+        user-form-params (read-yaml-config "sniper.yaml")]
+    (init options user-form-params)))
+
+(def CLI_OPTIONS
+  [["-s" "--start-date <YYYY-MM-dd>" "Start of the desired date interval (inclusive)."
+    :parse-fn parse-date]
+   ["-e" "--end-date <YYYY-MM-dd>" "End of the desired date interval (inclusive)."
+    :parse-fn parse-date]
+   ["-c" "--config CONFIG_FILE" "Config file name."
+    :default "sniper.yaml"]
+   [nil "--dry-run" "Look for the time, but don't book it when it's found."]
+   [nil "--socks <host:port>" "Use SOCKS proxy for scanning (to avoid banning). The actual booking request will be made directly."
+    :parse-fn parse-socks]
+   ["-h" "--help" "Show this help message"]])
+
+(defn usage [options-summary]
+  (->> ["Buergeramt-sniper is a tool for finding and booking appointments with Berlin public services (https://service.berlin.de)"
+        ""
+        "Usage: lein run -- [options] service-url"
+        ""
+        "Options:"
+        options-summary
+        ""]
+       (str/join \newline)))
+
+(defn error-msg [errors]
+  (str "The following errors occurred while parsing your command:\n\n"
+       (str/join \newline errors)))
+
+(defn exit [status msg]
+  (println msg)
+  (System/exit status))
+
 (defn -main
   "Entry point when run from a command line"
-  [base-href & [date1 date2]]
-  (let [user-form-params (read-yaml-config "sniper.yaml")
-        system (init user-form-params base-href date1 date2)]
-    (try (run system)
-         (finally (component/stop system)))))
+  [& args]
+  (let [{:keys [options arguments errors summary] :as cli-opts} (cli/parse-opts args CLI_OPTIONS)]
+    (cond
+      (:help options) (exit 0 (usage summary))
+      (not= (count arguments) 1) (exit 1 (usage summary))
+      errors (exit 1 (error-msg errors)))
+    (let [base-url (first arguments)
+          user-form-params (read-yaml-config (:config options))
+          system (init (assoc options :base-url base-url)
+                       user-form-params)]
+      (try (<!! (run system))
+           (finally (component/stop system))))))

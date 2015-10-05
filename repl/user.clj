@@ -66,10 +66,6 @@
 (def connection-manager (conn-mgr/make-socks-proxied-conn-manager "localhost" 9050))
 
 (defn my-ip []
-  (-> "http://checkip.dyndns.org"
+  (-> "http://ipecho.net/plain"
       (http/get {:connection-manager connection-manager})
-      :body
-      html/html-snippet
-      (html/select [:body])
-      first
-      html/text))
+      :body))
