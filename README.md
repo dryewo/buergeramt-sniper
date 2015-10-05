@@ -2,6 +2,18 @@
 
 A useful tool that helps to get an appointment at Berlin public services (https://service.berlin.de/dienstleistungen/)
 
+Sometimes you need to get an appointment at Berlin Bürgeramt, for example when you have just arrived in Germany and need to register in order to be able to open a bank account in order to be able to receive your salary. It usually has to be done within first 10 days of the month.
+
+This service is called **"Anmeldung einer Wohnung"**.
+
+And when you go to https://service.berlin.de/dienstleistungen/120686/ to pick a time to visit, you discover that the earliest available time is 2 months from now, which does not help too much — you need it now, not after 2 months.
+
+There are 3 real options:
+
+- Go to the nearest Bürgeramt at 7am, stand ~2 hours in the huge line and hope that there someone won't show up on his time and you get served instead of him.
+- Continuously refresh (F5) the calendar page, so that if someone cancels his appointment, you are able to take it very quickly. But be aware, there are many people doing this. Usually takes several hours until you succeed.
+- Use **buergeramt-sniper**, that will do all the page F5ing and form filling for you.
+
 ## Installation
 
 - Install [Leiningen](http://leiningen.org/) to be able to use Clojure.
@@ -78,6 +90,12 @@ $ java -jar target/uberjar/buergeramt-sniper.jar --socks localhost:9050 "https:/
 ## Known issues and limitations
 
 1. No scanning of all available dates, just those which are seen on the initial calendar page (usually the current month and the month after). But taking into account the most requested use case (need an appointment in the next couple of days) that is enough. Also it reduces the number of necessary requests.
+
+## Donations
+
+If you like this project, the best thing you can do for me is learn Clojure. Clojure is awesome, I want more people to do it.
+
+Long live Clojure!
 
 ## License
 
