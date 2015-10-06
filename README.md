@@ -27,6 +27,11 @@ or
 
     $ sudo apt-get install -y tor
 
+## Precautions
+
+- Use `--dry-run` parameter to try things out
+- Use Tor with and `--socks` parameter for anonimizing
+
 ## Usage
 
 First go to (https://service.berlin.de/dienstleistungen/) and choose the service that you are trying to get an appointment to.
