@@ -91,6 +91,7 @@
                                                (try-book-until-success
                                                  system
                                                  initial-calendar-href
+                                                 ch-done
                                                  new-stats))))))))))
 
 (defn start-trying
