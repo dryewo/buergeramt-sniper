@@ -12,8 +12,7 @@
             [clojure.core.async :refer [<!!]]
             [clj-http.conn-mgr :as conn-mgr]
             [clojure.string :as str])
-  (:gen-class)
-  (:import (org.joda.time DateTime)))
+  (:gen-class))
 
 (s/defrecord RunParams
   [options :- {s/Keyword s/Any}

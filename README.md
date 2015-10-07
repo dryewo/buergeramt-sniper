@@ -30,7 +30,7 @@ or
 ## Precautions
 
 - Use `--dry-run` parameter to try things out
-- Use Tor with and `--socks` parameter for anonimizing
+- Use Tor and `--socks` parameter for anonimizing
 
 ## Usage
 
