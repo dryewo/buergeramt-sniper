@@ -122,8 +122,9 @@
   (load-page-impl loader
                   (merge-with merge
                               request-opts
-                              {:method  :post
-                               :url     (if use-local-for-post
-                                          (replace-host-addr url use-local-for-post)
-                                          url)
-                               :headers DEFAULT_HEADERS})))
+                              {:method          :post
+                               :force-redirects true
+                               :url             (if use-local-for-post
+                                                  (replace-host-addr url use-local-for-post)
+                                                  url)
+                               :headers         DEFAULT_HEADERS})))
