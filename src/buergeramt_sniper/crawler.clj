@@ -62,6 +62,8 @@
 (s/defn get-available-times :- [AvailableTime]
   [system
    available-dates :- [AvailableDate]]
+  (when (seq available-dates)
+    (log/debug "Loading available times for" (map :name available-dates)))
   (for [ad available-dates
         t (:times (get-page system (:href ad) scraper/parse-daytimes-page))]
     (strict-map->AvailableTime (merge t {:date (:name ad)}))))
@@ -86,7 +88,7 @@
         calendar-pages (get-all-calendar-pages system intial-calendar-href)
         available-dates (->> (collect-available-dates calendar-pages)
                              (filter (between-checker start-date end-date)) ;
-                             (take 1))                      ; Safety measure to avoid banning
+                             (take 2))                      ; Safety measure to avoid banning
         available-times (get-available-times system available-dates)]
     available-times))
 
@@ -103,11 +105,12 @@
   [system href]
   (let [{:keys [user-form-params]} (-> system :run-params)
         {:keys [hidden-inputs form-action]} (s/validate AppointmentPage (get-page system href scraper/parse-appointment-page))
+        form-params (log/spy (merge hidden-inputs
+                                    {"agbgelesen" "1"}
+                                    user-form-params))
         booking-response (post-page system
                                     form-action
-                                    {:form-params (merge hidden-inputs
-                                                         {"agbgelesen" "1"}
-                                                         user-form-params)
+                                    {:form-params form-params
                                      :headers     {"Referer" href}}
                                     scraper/parse-booking-response-page)]
     (strict-map->BookingResult {:success      (if (:transaction-number booking-response) true false)

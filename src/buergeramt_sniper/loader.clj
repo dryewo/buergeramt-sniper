@@ -95,7 +95,9 @@
             (save-to-cache loader request-opts response))
           (parse-html url body))))))
 
-(def DEFAULT_HEADERS {"User-Agent" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36"})
+(def DEFAULT_HEADERS {"User-Agent"    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36"
+                      "Cache-Control" "no-cache, no-store"
+                      "Pragma"        "no-cache"})
 
 (s/defn replace-host-addr :- Href
   "Replaces protocol and host parts in the url"
