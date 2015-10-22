@@ -64,9 +64,10 @@
   "Provide run-params which are normally supplied wia command-line, then run init"
   []
   (let [options {
-                 ;:base-url "https://service.berlin.de/dienstleistung/121482/"
-                 :base-url   "https://service.berlin.de/dienstleistung/326423/"
+                 ;:base-url "https://service.berlin.de/dienstleistung/121482/" ; Grünes Kennzeichen beantragen
+                 ;:base-url   "https://service.berlin.de/dienstleistung/326423/" ; Abholung von sichergestellten Fahrzeugen
                  ;:base-url   "https://service.berlin.de/dienstleistung/120686/" ; Anmeldung einer Wohnung
+                 :base-url   "https://service.berlin.de/dienstleistung/121598/" ; Umschreibung einer ausländischen Fahrerlaubnis
                  :start-date (parse-date "2015-10-06")
                  ;:end-date (parse-date "2015-10-08")
                  :socks      (parse-socks "localhost:9050")

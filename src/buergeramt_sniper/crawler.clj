@@ -22,8 +22,12 @@
   [success :- s/Bool
    booking-page :- (s/either BookingSuccessPage BookingFailurePage)])
 
+(defn get-page-direct [system href parser-fn]
+  (some-> (loader/load-page-get (:loader system) href true)
+          parser-fn))
+
 (defn get-page [system href parser-fn]
-  (some-> (loader/load-page-get (:loader system) href)
+  (some-> (loader/load-page-get (:loader system) href false)
           parser-fn))
 
 (defn post-page [system href request-opts parser-fn]
@@ -39,7 +43,7 @@
    initial-page-href :- s/Str]
   ; TODO Implement crawling all pages
   ; For simplicity's sake return only the first one
-  (->> [(get-page system initial-page-href scraper/parse-calendar-page)]
+  (->> [(get-page system (str initial-page-href "&r=" (rand-int 100000)) scraper/parse-calendar-page)]
        (remove nil?)))
 
 ;(defn extract-prev&next [calendar-page]
@@ -65,7 +69,7 @@
   (when (seq available-dates)
     (log/debug "Loading available times for" (map :name available-dates)))
   (for [ad available-dates
-        t (:times (get-page system (:href ad) scraper/parse-daytimes-page))]
+        t (:times (get-page-direct system (:href ad) scraper/parse-daytimes-page))]
     (strict-map->AvailableTime (merge t {:date (:name ad)}))))
 
 (s/defn between-checker
@@ -88,7 +92,7 @@
         calendar-pages (get-all-calendar-pages system intial-calendar-href)
         available-dates (->> (collect-available-dates calendar-pages)
                              (filter (between-checker start-date end-date)) ;
-                             (take 2))                      ; Safety measure to avoid banning
+                             (take 1))                      ; Safety measure to avoid banning
         available-times (get-available-times system available-dates)]
     available-times))
 
@@ -104,7 +108,7 @@
 (s/defn book-appointment :- BookingResult
   [system href]
   (let [{:keys [user-form-params]} (-> system :run-params)
-        {:keys [hidden-inputs form-action]} (s/validate AppointmentPage (get-page system href scraper/parse-appointment-page))
+        {:keys [hidden-inputs form-action]} (s/validate AppointmentPage (get-page-direct system href scraper/parse-appointment-page))
         form-params (log/spy (merge hidden-inputs
                                     {"agbgelesen" "1"}
                                     user-form-params))

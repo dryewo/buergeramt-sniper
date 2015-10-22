@@ -1,4 +1,4 @@
-(defproject buergeramt-sniper "1.0.0"
+(defproject buergeramt-sniper "1.0.1"
   :description "Buergeramt-sniper"
   :url "https://github.com/dryewo/buergeramt-sniper"
   :license {:name "Eclipse Public License"

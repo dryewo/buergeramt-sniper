@@ -16,13 +16,16 @@
 (defn rand-int-between [[low high]]
   (+ low (rand-int (- high low))))
 
+(def AVAILABLE_TIME_DISPLAY_LIMIT 5)
+
 (s/defn pretty-print-available-times
   [available-times :- [AvailableTime]]
   (when (seq available-times)
     (log/info
       (with-out-str
         (print-table [:n :date :time :place]
-                     (take 3 (map-indexed #(assoc %2 :n (inc %1)) available-times)))))))
+                     (take AVAILABLE_TIME_DISPLAY_LIMIT
+                           (map-indexed #(assoc %2 :n (inc %1)) available-times)))))))
 
 (s/defn do-book :- (s/maybe BookingResult)
   [system initial-calendar-href]
@@ -32,7 +35,8 @@
       (let [book-fn (if (-> system :run-params :options :dry-run)
                       crawler/book-appointment-fake
                       crawler/book-appointment)]
-        (book-fn system (:href (first available-times)))))
+        (let [[first-time second-time third-time] available-times]
+          (book-fn system (:href (or third-time second-time first-time))))))
     (catch Exception e
       (crawler/strict-map->BookingResult
         {:success      false

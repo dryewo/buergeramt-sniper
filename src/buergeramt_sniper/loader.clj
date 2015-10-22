@@ -83,8 +83,8 @@
   (log/debug "Loading" method url)
   (let [cached-response (load-from-cache loader request-opts)
         response (or cached-response (http/request request-opts))
-        {:keys [status body error]} response]
-    (log/trace [status error])
+        {:keys [status body error headers]} response]
+    (log/debug (select-keys headers ["X-Varnish"]))
     (if error
       (log/error "Error:" error)
       (if (not= 200 status)
@@ -111,11 +111,13 @@
 
 (s/defn load-page-get :- [Dom]
   [{:keys [connection-manager] :as loader} :- Loader
-   url :- Href]
-  (load-page-impl loader {:method             :get
-                          :url                url
-                          :headers            DEFAULT_HEADERS
-                          :connection-manager connection-manager}))
+   url :- Href
+   direct? :- Boolean]
+  (load-page-impl loader (merge {:method  :get
+                                 :url     url
+                                 :headers DEFAULT_HEADERS}
+                                (when-not direct?
+                                  {:connection-manager connection-manager}))))
 
 (s/defn load-page-post :- [Dom]
   [{:keys [use-local-for-post] :as loader} :- Loader
