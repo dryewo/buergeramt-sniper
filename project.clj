@@ -9,7 +9,7 @@
                  [com.stuartsierra/component "0.3.0"]
                  [enlive "1.1.6"]
                  [clojurewerkz/urly "1.0.0"]
-                 [prismatic/schema "1.0.1"]
+                 [prismatic/schema "1.0.3"]
                  [jarohen/chime "0.1.6"]
                  [pandect "0.5.4"]
                  [clj-yaml "0.4.0"]
@@ -22,7 +22,7 @@
   :uberjar-name "buergeramt-sniper.jar"
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}
-             :repl    {:repl-options {:init-ns user}
-                       :source-paths ["repl"]
+             :dev     {:repl-options {:init-ns user}
+                       :source-paths ["dev"]
                        :dependencies [[org.clojure/tools.namespace "0.2.10"]
                                       [org.clojure/java.classpath "0.2.2"]]}})
