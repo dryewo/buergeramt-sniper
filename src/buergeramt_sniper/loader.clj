@@ -6,7 +6,8 @@
             [schema.core :as s]
             [pandect.algo.md5 :as md5]
             [clojure.java.io :as io])
-  (:import (java.io PushbackReader)))
+  (:import (java.io PushbackReader)
+           (java.net SocketTimeoutException)))
 
 (s/defschema Dom
   "Enlive DOM schema"
@@ -81,19 +82,23 @@
   [loader :- Loader
    {:keys [method url] :as request-opts} :- {s/Keyword s/Any}]
   (log/debug "Loading" method url)
-  (let [cached-response (load-from-cache loader request-opts)
-        response (or cached-response (http/request request-opts))
-        {:keys [status body error headers]} response]
-    (log/debug (select-keys headers ["X-Varnish"]))
-    (if error
-      (log/error "Error:" error)
-      (if (not= 200 status)
-        (log/error "Status:" status)
-        (do
-          (when (and (nil? cached-response)
-                     (not (re-seq #"localhost" url)))       ; Never cache dev-server responses
-            (save-to-cache loader request-opts response))
-          (parse-html url body))))))
+  (try
+    (let [cached-response (load-from-cache loader request-opts)
+          response (or cached-response (http/request request-opts))
+          {:keys [status body error headers]} response]
+      (log/debug (select-keys headers ["X-Varnish"]))
+      (if error
+        (log/error "Error:" error)
+        (if (not= 200 status)
+          (log/error "Status:" status)
+          (do
+            (when (and (nil? cached-response)
+                       (not (re-seq #"localhost" url)))     ; Never cache dev-server responses
+              (save-to-cache loader request-opts response))
+            (parse-html url body)))))
+    (catch SocketTimeoutException e
+      (log/warn (str e))
+      nil)))
 
 (def DEFAULT_HEADERS {"User-Agent"    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36"
                       "Cache-Control" "no-cache, no-store"
@@ -113,9 +118,11 @@
   [{:keys [connection-manager] :as loader} :- Loader
    url :- Href
    direct? :- Boolean]
-  (load-page-impl loader (merge {:method  :get
-                                 :url     url
-                                 :headers DEFAULT_HEADERS}
+  (load-page-impl loader (merge {:method         :get
+                                 :url            url
+                                 :headers        DEFAULT_HEADERS
+                                 :socket-timeout 60000
+                                 :conn-timeout   60000}
                                 (when-not direct?
                                   {:connection-manager connection-manager}))))
 
