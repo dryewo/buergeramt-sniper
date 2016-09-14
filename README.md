@@ -6,7 +6,7 @@ Sometimes you need to get an appointment at Berlin Bürgeramt, for example when 
 
 This service is called **"Anmeldung einer Wohnung"**.
 
-And when you go to https://service.berlin.de/dienstleistungen/120686/ to pick a time to visit, you discover that the earliest available time is 2 months from now, which does not help too much — you need it now, not after 2 months.
+And when you go to https://service.berlin.de/dienstleistung/120686/ to pick a time to visit, you discover that the earliest available time is 2 months from now, which does not help too much — you need it now, not after 2 months.
 
 There are 3 real options:
 
